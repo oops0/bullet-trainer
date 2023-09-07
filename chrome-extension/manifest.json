@@ -4,10 +4,16 @@
   "version": "1.0",
   "description": "Observe chess games and send moves to an analysis application.",
   "permissions": ["activeTab", "storage", "nativeMessaging"],
+  "web_accessible_resources": [
+    {
+      "resources": ["assets/*"],
+      "matches": ["<all_urls>"]
+    }
+  ],  
   "content_scripts": [
     {
       "matches": ["*://lichess.org/*"],
-      "js": ["js/content.js"]
+      "js": ["js/content.js"]    
     }
   ]
 }

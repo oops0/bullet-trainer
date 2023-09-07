@@ -1,16 +1,32 @@
-console.log("Content script loaded");
-
 let ws;
-let lastSeenPGN = ""; // New variable to store the last seen PGN
+let lastSeenPGN = ""; 
+let connectionCheckInterval;
+let isObserving = false; // Global flag to check if the extension is actively observing
+
+const checkWebSocketConnection = () => {
+    if (ws && ws.readyState !== WebSocket.OPEN) {
+        statusText.innerHTML = '<span style="color:red;">WebSocket connection lost!</span><br><span style="font-weight:normal;">Please restart the app</span>';
+    } else if (ws && ws.readyState === WebSocket.OPEN && isObserving) {
+        // Only set the status to 'Observing' if the extension is actively observing
+        setExtensionStatus('Observing');
+    }
+};
 
 const establishWebSocket = () => {
     ws = new WebSocket('ws://localhost:8080');
+    
     ws.onopen = () => {
         console.log('WebSocket connection established.');
+        if (connectionCheckInterval) {
+            clearInterval(connectionCheckInterval); // Clear previous interval if exists
+        }
+        connectionCheckInterval = setInterval(checkWebSocketConnection, 5000); // Check every 5 seconds
     };
+
     ws.onerror = (error) => {
         console.error("WebSocket Error:", error);
     };
+
     ws.onclose = (event) => {
         if (event.wasClean) {
             console.log(`WebSocket connection closed cleanly.`);
@@ -21,9 +37,10 @@ const establishWebSocket = () => {
 };
 
 const sendMoves = (moves) => {
-    if (ws && ws.readyState === WebSocket.OPEN && moves !== lastSeenPGN) { // Check if the PGN is different from the last seen one
+    if (ws && ws.readyState === WebSocket.OPEN && moves !== lastSeenPGN) { 
         ws.send(JSON.stringify({ move: moves }));
-        lastSeenPGN = moves; // Update the last seen PGN
+        lastSeenPGN = moves; 
+        setExtensionStatus('Observing'); // Set status to "Observing" after sending move
     }
 };
 
@@ -48,9 +65,174 @@ const extractMoves = (mutationsList) => {
     }
 };
 
-const movesElement = document.querySelector("#main-wrap > main > div.round__app.variant-standard > rm6 > l4x");
-if (movesElement) {
-    establishWebSocket();
-    const observer = new MutationObserver(extractMoves);
-    observer.observe(movesElement, { childList: true });
+const initiateTemporaryObserver = () => {
+    const bodyElement = document.body;
+
+    const tempObserver = new MutationObserver(() => {
+        const movesElement = document.querySelector("#main-wrap > main > div.round__app.variant-standard > rm6 > l4x");
+        if (movesElement) {
+            tempObserver.disconnect();  // Stop the temporary observer
+            establishWebSocket();
+            const mainObserver = new MutationObserver(extractMoves);
+            mainObserver.observe(movesElement, { childList: true });
+            setExtensionStatus('Waiting for moves...');
+        }
+    });
+
+    tempObserver.observe(bodyElement, { childList: true, subtree: true });
+};
+
+
+// Immediately establish WebSocket connection on extension load.
+establishWebSocket();
+
+const initiateObserver = () => {
+    // Check WebSocket connection status first
+    if (!ws || ws.readyState !== WebSocket.OPEN) {
+        statusText.innerHTML = '<span style="font-weight:bold;">Server not found.</span><br>Please run launch-bullet-trainer.bat';
+        return; // Exit the function early if no active WebSocket connection
+    }
+
+    const movesElement = document.querySelector("#main-wrap > main > div.round__app.variant-standard > rm6 > l4x");
+    if (movesElement) {
+        isObserving = true; // Set the flag to true when the observation starts
+        const observer = new MutationObserver(extractMoves);
+        observer.observe(movesElement, { childList: true });
+        setExtensionStatus('Waiting...');
+    } else {
+        setExtensionStatus('Connected. Waiting for moves.');
+        initiateTemporaryObserver();
+    }
+};
+
+
+// Placeholder function for "Flip" button action
+const flipFunction = () => {
+    console.log("Flip button clicked!");
+    // Implementation will go here later...
+};
+
+const divider = document.createElement('div');
+divider.style.height = '1px';
+divider.style.backgroundColor = '#000000';  
+divider.style.margin = '5px 0';  // Reduced from 10px
+
+
+// Create a container for the buttons and user details
+const buttonContainer = document.createElement('div');
+buttonContainer.style.backgroundColor = 'white';
+buttonContainer.style.borderRadius = '5px';
+buttonContainer.style.padding = '10px';
+buttonContainer.style.boxShadow = '0 2px 8px rgba(0, 0, 0, 0.1)'; // Optional: Adds a subtle shadow for depth
+
+
+// Common styles for the buttons
+const buttonStyles = `
+    margin: 5px;
+    padding: 8px 12px;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    background-color: #007BFF;
+    color: white;
+    font-size: 14px;
+    transition: background-color 0.3s;
+`;
+const buttonHoverStyles = `
+    background-color: rgba(0, 123, 255, 0.8);
+`;
+
+// Creating the "Start" button
+const startButton = document.createElement('button');
+startButton.innerText = "Start";
+startButton.style.cssText = buttonStyles;
+startButton.addEventListener('mouseenter', () => {startButton.style.backgroundColor = "rgba(0, 123, 255, 0.8)";});
+startButton.addEventListener('mouseleave', () => {startButton.style.backgroundColor = "#007BFF";});
+startButton.addEventListener('click', initiateObserver);
+buttonContainer.appendChild(startButton);
+
+// Creating the "Flip" button
+const flipButton = document.createElement('button');
+flipButton.innerText = "Flip";
+flipButton.style.cssText = buttonStyles;
+flipButton.addEventListener('mouseenter', () => {
+    flipButton.style.backgroundColor = "rgba(0, 123, 255, 0.8)";
+});
+flipButton.addEventListener('mouseleave', () => {
+    flipButton.style.backgroundColor = "#007BFF";
+});
+flipButton.addEventListener('click', flipFunction);
+buttonContainer.appendChild(flipButton);
+
+//~~VISUAL DIVIDER~~
+buttonContainer.appendChild(divider);
+//~~VISUAL DIVIDER~~
+
+// Section for checkbox, icon, and user details
+const detailsSection = document.createElement('div');
+detailsSection.style.display = 'flex';
+detailsSection.style.alignItems = 'center';
+detailsSection.style.marginTop = '5px';
+
+const checkbox = document.createElement('input');
+checkbox.type = 'checkbox';
+
+const icon = document.createElement('img');
+icon.src = chrome.runtime.getURL('assets/bullet.png');
+icon.style.width = '24px';
+icon.style.height = '24px';
+icon.style.marginLeft = '10px';
+
+const userDetails = document.createElement('span');
+userDetails.innerText = 'User Details';  // Placeholder text
+userDetails.style.marginLeft = '10px';
+
+detailsSection.appendChild(checkbox);
+detailsSection.appendChild(icon);
+detailsSection.appendChild(userDetails);
+
+buttonContainer.appendChild(detailsSection);
+
+// Parent container to wrap both the button container and status text
+const parentContainer = document.createElement('div');
+parentContainer.style.position = 'fixed';
+parentContainer.style.top = '60px';
+parentContainer.style.right = '100px';
+parentContainer.style.zIndex = '9999';
+parentContainer.style.textAlign = 'center'; // To center-align contents
+
+// Create the status text element
+const statusText = document.createElement('div');
+statusText.className = 'statusText';
+statusText.id = 'extensionStatusText';
+statusText.textContent = 'Inactive';
+statusText.style.marginTop = '5px';  // Add spacing above the status text
+
+
+// Then add the buttonContainer and statusText to the parent container
+parentContainer.appendChild(buttonContainer);
+parentContainer.appendChild(statusText);
+
+
+// Update the status text function
+function setExtensionStatus(status) {
+    const statusText = document.getElementById('extensionStatusText');
+    statusText.textContent = status;
+
+    switch (status) {
+        case 'Inactive':
+            statusText.style.fontStyle = 'normal';
+            statusText.style.fontWeight = 'normal';
+            break;
+        case 'Waiting for moves...':
+            statusText.style.fontStyle = 'italic';
+            statusText.style.fontWeight = 'normal';
+            break;
+        case 'Observing':
+            statusText.style.fontStyle = 'normal';
+            statusText.style.fontWeight = 'bold';
+            break;
+    }
 }
+
+document.body.appendChild(parentContainer);

@@ -21,9 +21,6 @@ function updatePGN(pgn) {
     mainWindow.webContents.executeJavaScript(inputPGNCode);
 }
 
-
-
-
 ipcMain.on('pgn-moves', (event, data) => {
     console.log('Received moves in Electron:', data.moves);
     updatePGN(data.moves);
