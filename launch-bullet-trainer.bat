@@ -1,0 +1,3 @@
+@echo off
+echo Starting Electron App...
+"C:\Users\scott\Desktop\projects\bullet-trainer\node_modules\.bin\electron.cmd" "C:\Users\scott\Desktop\projects\bullet-trainer"

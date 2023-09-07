@@ -1,0 +1,13 @@
+{
+  "manifest_version": 3,
+  "name": "Chess Game Observer",
+  "version": "1.0",
+  "description": "Observe chess games and send moves to an analysis application.",
+  "permissions": ["activeTab", "storage", "nativeMessaging"],
+  "content_scripts": [
+    {
+      "matches": ["*://lichess.org/*"],
+      "js": ["js/content.js"]
+    }
+  ]
+}
