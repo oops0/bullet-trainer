@@ -5,7 +5,7 @@ let isObserving = false; // Global flag to check if the extension is actively ob
 
 const checkWebSocketConnection = () => {
     if (ws && ws.readyState !== WebSocket.OPEN) {
-        statusText.innerHTML = '<span style="color:red;">WebSocket connection lost!</span><br><span style="font-weight:normal;">Please restart the app</span>';
+        statusText.innerHTML = '<span style="color:red;">App connection lost!</span><br><span style="font-weight:normal;">Restart app, then refresh this page</span>';
     } else if (ws && ws.readyState === WebSocket.OPEN && isObserving) {
         // Only set the status to 'Observing' if the extension is actively observing
         setExtensionStatus('Observing');
@@ -89,7 +89,7 @@ establishWebSocket();
 const initiateObserver = () => {
     // Check WebSocket connection status first
     if (!ws || ws.readyState !== WebSocket.OPEN) {
-        statusText.innerHTML = '<span style="font-weight:bold;">Server not found.</span><br>Please run launch-bullet-trainer.bat';
+        statusText.innerHTML = '<span style="font-weight:bold;">Server not found.</span><br>Restart app, then refresh this page';
         return; // Exit the function early if no active WebSocket connection
     }
 
@@ -106,11 +106,16 @@ const initiateObserver = () => {
 };
 
 
-// Placeholder function for "Flip" button action
 const flipFunction = () => {
     console.log("Flip button clicked!");
-    // Implementation will go here later...
+    
+    // Check if WebSocket connection is established and open
+    if (ws && ws.readyState === WebSocket.OPEN) {
+        // Send a specific message (e.g., 'FLIP') to the server indicating the flip request
+        ws.send('FLIP');
+    }
 };
+
 
 const divider = document.createElement('div');
 divider.style.height = '1px';
@@ -122,13 +127,14 @@ divider.style.margin = '5px 0';  // Reduced from 10px
 const buttonContainer = document.createElement('div');
 buttonContainer.style.backgroundColor = 'white';
 buttonContainer.style.borderRadius = '5px';
-buttonContainer.style.padding = '10px';
+buttonContainer.style.padding = '5px';  // Reduced the padding
 buttonContainer.style.boxShadow = '0 2px 8px rgba(0, 0, 0, 0.1)'; // Optional: Adds a subtle shadow for depth
+
 
 
 // Common styles for the buttons
 const buttonStyles = `
-    margin: 5px;
+    margin-left: 5px;
     padding: 8px 12px;
     border: none;
     border-radius: 5px;
@@ -163,6 +169,43 @@ flipButton.addEventListener('mouseleave', () => {
 });
 flipButton.addEventListener('click', flipFunction);
 buttonContainer.appendChild(flipButton);
+
+//~~VISUAL DIVIDER~~
+buttonContainer.appendChild(divider);
+//~~VISUAL DIVIDER~~
+
+// "Multiple lines" Configuration Section
+const multipleLinesConfig = document.createElement('div');
+multipleLinesConfig.style.display = 'flex';
+multipleLinesConfig.style.justifyContent = 'center'; // Keeps elements centered horizontally
+multipleLinesConfig.style.alignItems = 'center';
+multipleLinesConfig.style.margin = '5px 0';
+
+const multipleLinesLabel = document.createElement('label');
+multipleLinesLabel.innerText = 'Multiple lines:';
+multipleLinesLabel.htmlFor = 'multiple-lines-dropdown';
+multipleLinesLabel.style.marginRight = '5px'; // Adds a little spacing between the label and the dropdown
+
+const multipleLinesDropdown = document.createElement('select');
+multipleLinesDropdown.id = 'multiple-lines-dropdown';
+multipleLinesDropdown.style.padding = '0px';
+multipleLinesDropdown.style.margin = '0px';
+multipleLinesDropdown.style.lineHeight = '1'; // Adjust as needed
+for (let i = 1; i <= 5; i++) {
+    const option = document.createElement('option');
+    option.value = i;
+    option.innerText = i;
+    multipleLinesDropdown.appendChild(option);
+}
+
+multipleLinesDropdown.addEventListener('change', (e) => {
+    const selectedValue = e.target.value;
+    ws.send(`SET_MULTIPLE_LINES:${selectedValue}`);
+});
+
+multipleLinesConfig.appendChild(multipleLinesLabel);
+multipleLinesConfig.appendChild(multipleLinesDropdown);
+buttonContainer.appendChild(multipleLinesConfig); // Adding the "Multiple lines" config section to the button container
 
 //~~VISUAL DIVIDER~~
 buttonContainer.appendChild(divider);
@@ -207,6 +250,9 @@ statusText.className = 'statusText';
 statusText.id = 'extensionStatusText';
 statusText.textContent = 'Inactive';
 statusText.style.marginTop = '5px';  // Add spacing above the status text
+statusText.style.padding = '5px 10px'; // Padding around the text for a better look
+statusText.style.borderRadius = '5px'; // To match the style of buttonContainer
+statusText.style.backgroundColor = '#f5f5f5'; // A slightly darker off-white tone
 
 
 // Then add the buttonContainer and statusText to the parent container
