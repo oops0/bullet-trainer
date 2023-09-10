@@ -1,33 +1,70 @@
-.divider {
-    height: 1px;
-    background-color: #000000;
-    margin: 5px 0;
-}
-
-.button-container {
-    background-color: white;
-    border-radius: 5px;
-    padding: 5px;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-}
-
-.styled-button {
-    margin-left: 5px;
-    padding: 8px 12px;
+/* Base Styles */
+.styled-button, .analysis-board-options-button {
+    display: inline-block;
+    margin: 5px auto; /* Center the buttons horizontally */
+    padding: 5px 5px;
     border: none;
     border-radius: 5px;
     cursor: pointer;
+    font-size: 13px;
+    transition: background-color 0.3s;
+}
+
+.styled-button{
     background-color: #007BFF;
     color: white;
-    font-size: 14px;
-    transition: background-color 0.3s;
+}
+
+.analysis-board-options-button{
+    background-color: #9b9b9b;
+    color: white;
+}
+
+.action-button-container {
+    display: flex;
+    gap:5px;
 }
 
 .button-hover {
     background-color: rgba(0, 123, 255, 0.8);
 }
 
-.multiple-lines-config {
+.divider {
+    height: 1px;
+    background-color: #000000;
+}
+
+/* Container Styles */
+.parent-container {
+    position: fixed;
+    top: 60px;
+    right: 100px;
+    z-index: 9999;
+    text-align: center;
+}
+
+.button-container {
+    display: flex;
+    flex-direction: column; /* Stack children vertically */
+    align-items: center; /* Center children horizontally */
+    justify-content: center; /* Center children vertically */
+    max-width: 200px;
+    background-color: white;
+    border-radius: 5px;
+    padding: 5px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.user-logout-container {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    width: 100%;
+}
+
+
+/* Config Styles */
+.config-container {
     display: flex;
     justify-content: center;
     align-items: center;
@@ -44,6 +81,7 @@
     line-height: 1;
 }
 
+/* Details Section */
 .details-section {
     display: flex;
     align-items: center;
@@ -53,21 +91,21 @@
 .icon {
     width: 24px;
     height: 24px;
-    margin-left: 10px;
+    margin-left: 5px;
 }
 
 .user-details {
-    margin-left: 10px;
+    margin-left: 5px;
+    font-style: italic;
+    font-size: 13px;
 }
 
-.parent-container {
-    position: fixed;
-    top: 60px;
-    right: 100px;
-    z-index: 9999;
-    text-align: center;
+.logout-button {
+    margin-left: auto;
+    font-size: 13px;
 }
 
+/* Status Text Styles */
 .status-text {
     margin-top: 5px;
     padding: 5px 10px;
@@ -90,6 +128,7 @@
     font-weight: bold;
 }
 
+/* Miscellaneous Styles */
 .hidden {
     display: none;
 }

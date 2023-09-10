@@ -72,8 +72,21 @@ const updateUIWithUserDetails = (username, coinCount) => {
     coinCountSpan.innerText = ` ${coinCount} coins`;
     coinCountSpan.className = 'coin-count';
 
-    detailsSection.insertBefore(coinCountSpan, checkbox);
-    detailsSection.insertBefore(coinCountSpan, userDetails.nextSibling);
+    // Remove the userDetails from its current position
+    detailsSection.removeChild(userDetails);
+
+    // Append the userDetails and coinCountSpan to the detailsSection
+    detailsSection.appendChild(userDetails);
+    detailsSection.appendChild(coinCountSpan);
+
+    // Create a new container for the userDetails and logoutButton
+    const userLogoutContainer = document.createElement('div');
+    userLogoutContainer.className = 'user-logout-container';
+    userLogoutContainer.appendChild(userDetails);
+    userLogoutContainer.appendChild(logoutButton);
+
+    // Append the new container to the buttonContainer
+    buttonContainer.appendChild(userLogoutContainer);
 };
 
 
@@ -157,54 +170,106 @@ parentContainer.className = 'parent-container';
 const buttonContainer = document.createElement('div');
 buttonContainer.className = 'button-container';
 
+const actionButtonContainer = document.createElement('div');
+actionButtonContainer.className = 'action-button-container';
+
 const startButton = document.createElement('button');
 startButton.innerText = "Start";
 startButton.className = 'styled-button';
 startButton.addEventListener('mouseenter', () => { startButton.classList.add('button-hover'); });
 startButton.addEventListener('mouseleave', () => { startButton.classList.remove('button-hover'); });
 startButton.addEventListener('click', initiateObserver);
-buttonContainer.appendChild(startButton);
 
 const flipButton = document.createElement('button');
-flipButton.innerText = "Flip";
+flipButton.innerText = "Flip board";
 flipButton.className = 'styled-button';
 flipButton.addEventListener('mouseenter', () => { flipButton.classList.add('button-hover'); });
 flipButton.addEventListener('mouseleave', () => { flipButton.classList.remove('button-hover'); });
 flipButton.addEventListener('click', flipFunction);
-buttonContainer.appendChild(flipButton);
+
+actionButtonContainer.appendChild(startButton);
+actionButtonContainer.appendChild(flipButton);
+
+buttonContainer.appendChild(actionButtonContainer);
 
 
 //~~VISUAL DIVIDER~~
 buttonContainer.appendChild(divider);
 //~~VISUAL DIVIDER~~
 
-const multipleLinesConfig = document.createElement('div');
-multipleLinesConfig.className = 'multiple-lines-config';
+const analysisBoardOptionsButton = document.createElement('button');
+analysisBoardOptionsButton.className = 'analysis-board-options-button';
+analysisBoardOptionsButton.innerText = "Analysis Options";
 
-const multipleLinesLabel = document.createElement('label');
-multipleLinesLabel.innerText = 'Multiple lines:';
-multipleLinesLabel.htmlFor = 'multiple-lines-dropdown';
-multipleLinesLabel.className = 'multiple-lines-label';
+const analysisSettingsContainer = document.createElement('div');
+analysisSettingsContainer.className = 'analysis-settings-container';
+analysisSettingsContainer.style.display = 'none'; // Initially hide the settings
 
-const multipleLinesDropdown = document.createElement('select');
-multipleLinesDropdown.id = 'multiple-lines-dropdown';
-multipleLinesDropdown.className = 'multiple-lines-dropdown';
-
-for (let i = 1; i <= 5; i++) {
-    const option = document.createElement('option');
-    option.value = i;
-    option.innerText = i;
-    multipleLinesDropdown.appendChild(option);
-}
-
-multipleLinesDropdown.addEventListener('change', (e) => {
-    const selectedValue = e.target.value;
-    ws.send(`SET_MULTIPLE_LINES:${selectedValue}`);
+analysisBoardOptionsButton.addEventListener('click', () => {
+    if (analysisSettingsContainer.style.display === 'none') {
+        analysisSettingsContainer.style.display = 'block';
+    } else {
+        analysisSettingsContainer.style.display = 'none';
+    }
 });
 
-multipleLinesConfig.appendChild(multipleLinesLabel);
-multipleLinesConfig.appendChild(multipleLinesDropdown);
-buttonContainer.appendChild(multipleLinesConfig); // Adding the "Multiple lines" config section to the button container
+
+// Multiple lines setup
+const multipleLinesConfig = createConfigContainer('Multiple lines:', 'multiple-lines-dropdown', 5, (selectedValue) => {
+    ws.send(`SET_MULTIPLE_LINES:${selectedValue}`);
+});
+analysisSettingsContainer.appendChild(multipleLinesConfig);
+
+// CPUs setup
+const cpuConfig = createConfigContainer('CPUs:', 'analyse-threads', 15, (selectedValue) => {
+    ws.send(`SET_CPUS:${selectedValue}`);
+});
+analysisSettingsContainer.appendChild(cpuConfig);
+
+// Memory setup
+const memoryOptions = ['16MB', '32MB', '64MB', '128MB', '256MB', '512MB', '1GB'];
+const memoryConfig = createConfigContainer('Memory:', 'analyse-memory', memoryOptions.length, (selectedValue, index) => {
+    const actualValue = memoryOptions[index];
+    ws.send(`SET_MEMORY:${actualValue}`);
+}, memoryOptions);
+analysisSettingsContainer.appendChild(memoryConfig);
+
+// Helper function to create a config container
+function createConfigContainer(labelText, dropdownId, optionsCount, onChangeCallback, optionValues) {
+    const configContainer = document.createElement('div');
+    configContainer.className = 'config-container';
+
+    const label = document.createElement('label');
+    label.innerText = labelText;
+    label.htmlFor = dropdownId;
+    label.className = 'multiple-lines-label';
+
+    const dropdown = document.createElement('select');
+    dropdown.id = dropdownId;
+    dropdown.className = 'multiple-lines-dropdown';
+
+    for (let i = 0; i < optionsCount; i++) {
+        const option = document.createElement('option');
+        option.value = i + (optionValues ? 4 : 1); // If optionValues is provided, start from 4, else start from 1
+        option.innerText = optionValues ? optionValues[i] : i + 1;
+        dropdown.appendChild(option);
+    }
+
+    dropdown.addEventListener('change', (e) => {
+        const selectedValue = e.target.value;
+        const selectedIndex = e.target.selectedIndex;
+        onChangeCallback(selectedValue, selectedIndex);
+    });
+
+    configContainer.appendChild(label);
+    configContainer.appendChild(dropdown);
+
+    return configContainer;
+}
+
+
+buttonContainer.appendChild(analysisBoardOptionsButton);
+buttonContainer.appendChild(analysisSettingsContainer);
 
 //~~VISUAL DIVIDER~~
 buttonContainer.appendChild(divider);
@@ -217,13 +282,13 @@ const checkbox = document.createElement('input');
 checkbox.type = 'checkbox';
 
 const icon = document.createElement('img');
-icon.src = chrome.runtime.getURL('assets/bullet.png');
-icon.style.width = '24px';
-icon.style.height = '24px';
+icon.src = chrome.runtime.getURL('assets/analyze.png');
+icon.style.width = '30px';
+icon.style.height = '30px';
 icon.style.marginLeft = '10px';
 
 const userDetails = document.createElement('span');
-userDetails.innerText = 'User Details';  // Placeholder text
+userDetails.innerText = 'Not logged in'; 
 userDetails.className = 'user-details';
 
 detailsSection.appendChild(checkbox);
@@ -235,25 +300,6 @@ buttonContainer.appendChild(detailsSection);
 //~~VISUAL DIVIDER~~
 buttonContainer.appendChild(divider);
 //~~VISUAL DIVIDER~~
-
-// Registration UI
-const registrationSection = document.createElement('div');
-registrationSection.className = 'registration-section hidden';  // Added "hidden" class
-
-const registrationUsername = document.createElement('input');
-registrationUsername.placeholder = 'Username';
-registrationSection.appendChild(registrationUsername);
-
-const registrationPassword = document.createElement('input');
-registrationPassword.type = 'password';
-registrationPassword.placeholder = 'Password';
-registrationSection.appendChild(registrationPassword);
-
-const registerButton = document.createElement('button');
-registerButton.innerText = "Register";
-registrationSection.appendChild(registerButton);
-
-parentContainer.appendChild(registrationSection);
 
 // Login UI
 const loginSection = document.createElement('div');
@@ -288,14 +334,10 @@ const loginButtonTrigger = document.createElement('button');
 loginButtonTrigger.innerText = "Login";
 loginButtonTrigger.addEventListener('click', () => showPopup(loginSection));
 
-const registerButtonTrigger = document.createElement('button');
-registerButtonTrigger.innerText = "Register";
-registerButtonTrigger.addEventListener('click', () => showPopup(registrationSection));
-
 buttonContainer.appendChild(loginButtonTrigger);  // Add these buttons to the buttonContainer for alignment
-buttonContainer.appendChild(registerButtonTrigger);
 
 const logoutButton = document.createElement('button');
+logoutButton.className = "logout-button"; // Add this line
 logoutButton.innerText = "Logout";
 logoutButton.addEventListener('click', () => {
     chrome.storage.local.remove('token', function() {
@@ -312,10 +354,7 @@ const createCloseButton = (popupElement) => {
     closeButton.addEventListener('click', () => hidePopup(popupElement));
     return closeButton;
 };
-
-registrationSection.appendChild(createCloseButton(registrationSection));
 loginSection.appendChild(createCloseButton(loginSection));
-
 
 const statusText = document.createElement('div');
 statusText.className = 'status-text inactive'; // I added "inactive" class as a starting status
@@ -354,35 +393,6 @@ chrome.storage.local.get('token', function(data) {
     }
 });
 
-registerButton.addEventListener('click', async () => {
-    const username = registrationUsername.value;
-    const password = registrationPassword.value;
-    
-    registerButton.disabled = true;
-
-    try {
-        const response = await fetch('http://localhost:3000/register', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({ username, password }),
-            timeout: 5000
-        });
-
-        const data = await response.json();
-        if (response.ok && data.success) {
-            alert('Registration successful!');
-        } else {
-            alert('Registration failed. Try again.');
-        }
-    } catch (error) {
-        console.error('Error registering:', error);
-    } finally {
-        registerButton.disabled = false;
-    }
-});
-
 loginButton.addEventListener('click', async () => {
     const username = loginUsername.value;
     const password = loginPassword.value;
@@ -399,12 +409,13 @@ loginButton.addEventListener('click', async () => {
             timeout: 5000
         });
 
-
         const data = await response.json();
         if (response.ok && data.token) {
             chrome.storage.local.set({ token: data.token });
             alert('Login successful!');
+            hidePopup(loginSection);  // Close the login form
             adjustButtonVisibility(true);
+            checkUserStatus();  // Update user details
         } else {
             alert('Login failed. Check your credentials.');
         }
@@ -414,7 +425,6 @@ loginButton.addEventListener('click', async () => {
         loginButton.disabled = false;
     }
 });
-
 
 function setExtensionStatus(status) {
     const statusText = document.getElementById('extensionStatusText');

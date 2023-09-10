@@ -12,6 +12,16 @@ let flipPending = false;
 const appExpress = express();
 const PORT = 3000;
 
+const memoryOptionsMapping = {
+    '16MB': 4,
+    '32MB': 5,
+    '64MB': 6,
+    '128MB': 7,
+    '256MB': 8,
+    '512MB': 9,
+    '1GB': 10
+};
+
 
 appExpress.use(bodyParser.json());
 appExpress.use(bodyParser.urlencoded({ extended: true }));
@@ -107,25 +117,27 @@ function simulateKeyPress(key) {
     robot.keyTap(key); // Simulate the key press.
 }
 
-function setMultipleLinesSetting(value) {
+function adjustSetting(selector, value, eventType = 'input') {
     const adjustSettingsAndCloseMenuCode = `
-        const menuButton = document.querySelector('#main-wrap > main > div.analyse__controls.analyse-controls > button');
-        
-        function clickMenuButton() {
-            menuButton.dispatchEvent(new MouseEvent('mousedown', { bubbles: true }));
-            menuButton.dispatchEvent(new MouseEvent('mouseup', { bubbles: true }));
+        if (!window.menuButton) {
+            window.menuButton = document.querySelector('#main-wrap > main > div.analyse__controls.analyse-controls > button');
         }
         
-        if (menuButton) {
+        function clickMenuButton() {
+            window.menuButton.dispatchEvent(new MouseEvent('mousedown', { bubbles: true }));
+            window.menuButton.dispatchEvent(new MouseEvent('mouseup', { bubbles: true }));
+        }
+        
+        if (window.menuButton) {
             clickMenuButton();  // Open the menu
             
             setTimeout(() => {
-                // Adjust the slider value
-                const slider = document.querySelector('#analyse-multipv');
-                if (slider) {
-                    slider.value = ${value};
-                    slider.dispatchEvent(new Event('input', { bubbles: true }));
-                    slider.dispatchEvent(new Event('change', { bubbles: true }));
+                // Adjust the setting value
+                const settingElement = document.querySelector('${selector}');
+                if (settingElement) {
+                    settingElement.value = '${value}';
+                    settingElement.dispatchEvent(new Event('${eventType}', { bubbles: true }));
+                    settingElement.dispatchEvent(new Event('change', { bubbles: true }));
                 }
                 
                 // Close the menu by simulating another click
@@ -139,6 +151,8 @@ function setMultipleLinesSetting(value) {
 
     mainWindow.webContents.executeJavaScript(adjustSettingsAndCloseMenuCode);
 }
+
+
 
 function updatePGN(pgn) {
     const inputPGNCode = `
@@ -187,9 +201,25 @@ function createWindow() {
             } else if (decodedMessage.startsWith('SET_MULTIPLE_LINES:')) {
                 const value = parseInt(decodedMessage.split(':')[1], 10);
                 if (value >= 0 && value <= 5) {
-                    setMultipleLinesSetting(value);
+                    adjustSetting('#analyse-multipv', value);
                 }
-            } else {
+            } else if (decodedMessage.startsWith('SET_CPUS:')) {
+                const value = parseInt(decodedMessage.split(':')[1], 10);
+                if (value >= 1 && value <= 15) {
+                    adjustSetting('#analyse-threads', value); 
+                }
+            }
+            else if (decodedMessage.startsWith('SET_MEMORY:')) {
+                const memoryValue = decodedMessage.split(':')[1];
+                const mappedValue = memoryOptionsMapping[memoryValue];
+                if (mappedValue) {
+                    adjustSetting('#analyse-memory', mappedValue);
+                } else {
+                    console.error('Invalid memory value received:', memoryValue);
+                }
+            }
+            
+             else {
                 try {
                     const parsedMessage = JSON.parse(decodedMessage);
                     updatePGN(parsedMessage.move);
@@ -199,6 +229,7 @@ function createWindow() {
             }
         });
     });
+    
 
     mainWindow.loadURL('https://lichess.org/analysis');
 
