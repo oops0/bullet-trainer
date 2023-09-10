@@ -1,8 +1,106 @@
 const { app, BrowserWindow, ipcMain } = require('electron');
 const robot = require('robotjs');
 const WebSocket = require('ws');
+const express = require('express');
+const cors = require('cors');
+const mongoose = require('mongoose');
+const bodyParser = require('body-parser');
+const jwt = require('jsonwebtoken');
+const bcrypt = require('bcrypt');
 let mainWindow;
 let flipPending = false;
+const appExpress = express();
+const PORT = 3000;
+
+
+appExpress.use(bodyParser.json());
+appExpress.use(bodyParser.urlencoded({ extended: true }));
+// Enable CORS for the lichess.org origin
+appExpress.use(cors({
+    origin: 'https://lichess.org',
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization'],
+    credentials: true
+}));
+
+ appExpress.options('/login', cors());  // Enable preflight request for /login route
+
+
+mongoose.connect('mongodb+srv://scstewart:3uWaQotmtP0KuYKs@bullettrainer.qgybk7j.mongodb.net/', { useNewUrlParser: true, useUnifiedTopology: true });
+
+const UserSchema = new mongoose.Schema({
+    username: String,
+    password: String,
+    coins: Number
+});
+
+const User = mongoose.model('User', UserSchema);
+
+appExpress.post('/register', async (req, res) => {
+    const { username, password } = req.body;
+
+    const hashedPassword = await bcrypt.hash(password, 10);
+
+    const newUser = new User({
+        username,
+        password: hashedPassword,
+        coins: 0
+    });
+
+    try {
+        await newUser.save();
+        res.status(200).send("User registered.");
+    } catch (err) {
+        console.error("Error while saving user:", err);
+        res.status(500).send("Error registering user.");
+    }
+});
+
+
+appExpress.post('/login', async (req, res) => {
+    const { username, password } = req.body;
+
+    const user = await User.findOne({ username });
+    if (!user) {
+        return res.status(401).send("User not found.");
+    }
+
+    const validPassword = await bcrypt.compare(password, user.password);
+    if (!validPassword) {
+        return res.status(401).send("Invalid password.");
+    }
+
+    const token = jwt.sign({ id: user._id }, 'm981cc483ujsicjc3mm202817scciz9d0ww938', { expiresIn: '1h' });
+    res.status(200).send({ token });
+});
+
+appExpress.get('/user-details', async (req, res) => {
+    const token = req.headers.authorization && req.headers.authorization.split(' ')[1];
+
+    if (!token) {
+        return res.status(401).send({ message: "No token provided." });
+    }
+
+    try {
+        const decodedToken = jwt.verify(token, 'm981cc483ujsicjc3mm202817scciz9d0ww938');
+
+        const user = await User.findById(decodedToken.id, 'username coins');
+
+        if (!user) {
+            return res.status(404).send({ message: "User not found." });
+        }
+
+        res.status(200).send({
+            username: user.username,
+            coinCount: user.coins
+        });
+    } catch (error) {
+        console.error("Error fetching user details:", error);
+        res.status(500).send({ message: "Error fetching user details." });
+    }
+});
+
+
 
 function simulateKeyPress(key) {
     mainWindow.focus(); // Ensure the Electron window is focused.
@@ -20,7 +118,6 @@ function setMultipleLinesSetting(value) {
         
         if (menuButton) {
             clickMenuButton();  // Open the menu
-            console.log('Menu button clicked programmatically!');
             
             setTimeout(() => {
                 // Adjust the slider value
@@ -34,20 +131,14 @@ function setMultipleLinesSetting(value) {
                 // Close the menu by simulating another click
                 setTimeout(() => {
                     clickMenuButton();
-                    console.log('Menu closed programmatically!');
                 }, 100);  // 100ms delay for the menu to close
 
             }, 10);  // 10ms delay for the actual click
-        } else {
-            console.log('Menu button not found!');
         }
     `;
 
     mainWindow.webContents.executeJavaScript(adjustSettingsAndCloseMenuCode);
 }
-
-
-
 
 function updatePGN(pgn) {
     const inputPGNCode = `
@@ -73,13 +164,10 @@ function updatePGN(pgn) {
 }
 
 ipcMain.on('pgn-moves', (event, data) => {
-    console.log('Received moves in Electron:', data.moves);
     updatePGN(data.moves);
 });
 
 function createWindow() {
-    console.log('Creating main window...');
-
     mainWindow = new BrowserWindow({
         width: 1000,
         height: 800,
@@ -88,48 +176,33 @@ function createWindow() {
         }
     });
 
-    console.log('Starting to load Lichess...');
-
-    // WebSocket server setup
     const wss = new WebSocket.Server({ port: 8080 });
-    wss.on('connection', (ws) => {
-        console.log('WebSocket client connected');
-    
+    wss.on('connection', (ws) => {    
         ws.on('message', (message) => {
             const decodedMessage = message.toString('utf8');
         
             if (decodedMessage === 'FLIP') {
-                console.log('Received flip request');
                 simulateKeyPress('f');
                 flipPending = true;
-                console.log('Flip is pending');
             } else if (decodedMessage.startsWith('SET_MULTIPLE_LINES:')) {
                 const value = parseInt(decodedMessage.split(':')[1], 10);
                 if (value >= 0 && value <= 5) {
-                    console.log('Setting multiple lines to', value);
                     setMultipleLinesSetting(value);
                 }
             } else {
                 try {
                     const parsedMessage = JSON.parse(decodedMessage);
-                    console.log('Received move:', parsedMessage.move);
                     updatePGN(parsedMessage.move);
                 } catch (e) {
                     console.error('Received an unknown message format:', decodedMessage);
                 }
             }
         });
-    
-        ws.on('close', () => {
-            console.log('WebSocket client disconnected');
-        });
     });
 
     mainWindow.loadURL('https://lichess.org/analysis');
 
     mainWindow.webContents.on('did-finish-load', async () => {
-        console.log('Lichess page finished loading.');
-    
         const checkElementExistence = `
             const startTime = Date.now();
             new Promise((resolve, reject) => {
@@ -146,22 +219,21 @@ function createWindow() {
         `;
     
         try {
-            console.log('Waiting for #main-wrap to be present...');
             await mainWindow.webContents.executeJavaScript(checkElementExistence);
-            console.log('#main-wrap is present.');
-            
-            console.log('Sending "L" key event...');
             simulateKeyPress('l');
-            console.log('"L" key event sent.');
         } catch (error) {
             console.error('Error waiting for element:', error);
         }
     });
     
     mainWindow.on('closed', function () {
-        console.log('Main window closed.');
         mainWindow = null;
     });
+
+    appExpress.listen(PORT, () => {
+        console.log(`Express server started on port ${PORT}`);
+    });
+    
 }
 
 app.on('ready', createWindow);

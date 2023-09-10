@@ -13,7 +13,8 @@
   "content_scripts": [
     {
       "matches": ["*://lichess.org/*"],
-      "js": ["js/content.js"]    
+      "js": ["js/content.js"],
+      "css": ["styles.css"]    
     }
   ]
 }
