@@ -151,8 +151,6 @@ function adjustSetting(selector, value, eventType = 'input') {
     mainWindow.webContents.executeJavaScript(adjustSettingsAndCloseMenuCode);
 }
 
-
-
 function updatePGN(pgn) {
     const inputPGNCode = `
         (function() {
@@ -185,6 +183,8 @@ function createWindow() {
         }
     });
 
+    mainWindow.setAlwaysOnTop(true, 'floating');
+
     const wss = new WebSocket.Server({ port: 8080 });
     wss.on('connection', (ws) => {    
         ws.on('message', (message) => {
@@ -192,7 +192,6 @@ function createWindow() {
         
             if (decodedMessage === 'FLIP') {
                 simulateKeyPress('f');
-                flipPending = true;
             } else if (decodedMessage.startsWith('SET_MULTIPLE_LINES:')) {
                 const value = parseInt(decodedMessage.split(':')[1], 10);
                 if (value >= 0 && value <= 5) {

@@ -1,5 +1,5 @@
 /* Base Styles */
-.styled-button, .analysis-board-options-button {
+.styled-button, .analysis-board-options-button, .flip-button {
     display: inline-block;
     margin: 5px auto; /* Center the buttons horizontally */
     padding: 5px 5px;
@@ -11,7 +11,12 @@
 }
 
 .styled-button{
-    background-color: #007BFF;
+    background-color: #0d9b00;
+    color: white;
+}
+
+.flip-button {
+    background-color: black;
     color: white;
 }
 
@@ -23,10 +28,6 @@
 .action-button-container {
     display: flex;
     gap:5px;
-}
-
-.button-hover {
-    background-color: rgba(0, 123, 255, 0.8);
 }
 
 .divider {

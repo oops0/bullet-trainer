@@ -99,13 +99,16 @@ const updateUIWithUserDetails = (username, gemCount) => {
     buttonContainer.appendChild(userLogoutContainer);
 };
 
-
-
 const sendMoves = (moves) => {
     if (ws && ws.readyState === WebSocket.OPEN && moves !== lastSeenPGN) { 
         ws.send(JSON.stringify({ move: moves }));
         lastSeenPGN = moves; 
         setExtensionStatus('Observing'); // Set status to "Observing" after sending move
+
+        if (flipPending) {
+            ws.send('FLIP');
+            flipPending = false;
+        }
     }
 };
 
@@ -166,12 +169,6 @@ const initiateObserver = () => {
     }
 };
 
-const flipFunction = () => {
-    if (ws && ws.readyState === WebSocket.OPEN) {
-        ws.send('FLIP');
-    }
-};
-
 const divider = document.createElement('div');
 divider.className = 'divider';
 
@@ -187,22 +184,26 @@ actionButtonContainer.className = 'action-button-container';
 const startButton = document.createElement('button');
 startButton.innerText = "Start";
 startButton.className = 'styled-button';
-startButton.addEventListener('mouseenter', () => { startButton.classList.add('button-hover'); });
-startButton.addEventListener('mouseleave', () => { startButton.classList.remove('button-hover'); });
 startButton.addEventListener('click', initiateObserver);
 
-const flipButton = document.createElement('button');
-flipButton.innerText = "Flip board";
-flipButton.className = 'styled-button';
-flipButton.addEventListener('mouseenter', () => { flipButton.classList.add('button-hover'); });
-flipButton.addEventListener('mouseleave', () => { flipButton.classList.remove('button-hover'); });
-flipButton.addEventListener('click', flipFunction);
+let flipPending = false;  // To track if a flip is pending after the orientation button is clicked
+
+function flipFunction() {
+    // Perform the initial flip
+    ws.send('FLIP');  // Assuming 'ws' is your WebSocket connection
+
+    flipPending = true;  // Set the flipPending flag to true
+}
+
+const orientationButton = document.createElement('button');
+orientationButton.innerText = "Flip"; // default state
+orientationButton.className = 'flip-button';
+orientationButton.addEventListener('click', flipFunction);
 
 actionButtonContainer.appendChild(startButton);
-actionButtonContainer.appendChild(flipButton);
+actionButtonContainer.appendChild(orientationButton);
 
 buttonContainer.appendChild(actionButtonContainer);
-
 
 //~~VISUAL DIVIDER~~
 buttonContainer.appendChild(divider);
