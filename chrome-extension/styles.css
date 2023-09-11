@@ -37,8 +37,8 @@
 /* Container Styles */
 .parent-container {
     position: fixed;
-    top: 60px;
-    right: 100px;
+    bottom: 60px;
+    left: 100px;
     z-index: 9999;
     text-align: center;
 }
@@ -81,22 +81,11 @@
     line-height: 1;
 }
 
-.status-text.logout-successful {
-    color: green;
-}
-
-
 /* Details Section */
 .details-section {
     display: flex;
     align-items: center;
     margin-top: 5px;
-}
-
-.icon {
-    width: 24px;
-    height: 24px;
-    margin-left: 5px;
 }
 
 .user-details {
@@ -137,6 +126,15 @@
     font-style: normal;
     font-weight: bold;
 }
+
+.status-text.login-successful, .status-text.logout-successful{
+    color: green;
+}
+
+.status-text.login-failed {
+    color: red;
+}
+
 
 /* Miscellaneous Styles */
 .hidden {

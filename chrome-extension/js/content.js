@@ -294,10 +294,9 @@ checkbox.type = 'checkbox';
 
 const icon = document.createElement('img');
 icon.src = chrome.runtime.getURL('assets/gem.png');
-icon.style.width = '25px';
-icon.style.height = '25px';
+icon.style.width = '22px';
+icon.style.height = '22px';
 icon.style.marginLeft = '5px';
-icon.style.marginRight = '5px';
 
 const userDetails = document.createElement('span');
 userDetails.innerText = 'Not logged in'; 
@@ -350,6 +349,7 @@ buttonContainer.appendChild(loginButtonTrigger);  // Add these buttons to the bu
 
 function clearUserDetails() {
     userDetails.innerText = 'Not logged in';
+    
     const gemCountSpan = document.querySelector('.gem-count');
     if (gemCountSpan) {
         gemCountSpan.remove(); // Remove the gem count display
@@ -434,12 +434,13 @@ loginButton.addEventListener('click', async () => {
         const data = await response.json();
         if (response.ok && data.token) {
             chrome.storage.local.set({ token: data.token });
-            alert('Login successful!');
+            // Update the status text instead of showing an alert
+            setExtensionStatus('Login successful!');
             hidePopup(loginSection);  // Close the login form
             adjustButtonVisibility(true);
             checkUserStatus();  // Update user details
         } else {
-            alert('Login failed. Check your credentials.');
+            setExtensionStatus('Login failed. Check your credentials.');
         }
     } catch (error) {
         console.error('Error logging in:', error);
@@ -463,10 +464,17 @@ function setExtensionStatus(status) {
             statusText.className = 'status-text observing';
             break;
         case 'Logout successful':
-            statusText.className = 'status-text logout-successful'; // Add a new class for this status
+            statusText.className = 'status-text logout-successful'; 
+            break;
+        case 'Login successful!':
+            statusText.className = 'status-text login-successful'; // Add a new class for this status
+            break;
+        case 'Login failed. Check your credentials.':
+            statusText.className = 'status-text login-failed'; // Add a new class for this status
             break;
     }
 }
+
 
 document.body.appendChild(parentContainer);
 // Check user's login status and update UI accordingly

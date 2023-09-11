@@ -8,7 +8,6 @@ const bodyParser = require('body-parser');
 const jwt = require('jsonwebtoken');
 const bcrypt = require('bcrypt');
 let mainWindow;
-let flipPending = false;
 const appExpress = express();
 const PORT = 3000;
 
@@ -169,15 +168,11 @@ function updatePGN(pgn) {
         })();
     `;
 
-    mainWindow.webContents.executeJavaScript(inputPGNCode).then(() => {
-        if (flipPending) {
-            simulateKeyPress('f');
-            flipPending = false;
-        }
-    });
+    mainWindow.webContents.executeJavaScript(inputPGNCode);
 }
 
 ipcMain.on('pgn-moves', (event, data) => {
+    console.log("Received moves:", data.moves);
     updatePGN(data.moves);
 });
 
