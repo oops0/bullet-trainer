@@ -36,12 +36,12 @@ appExpress.use(cors({
  appExpress.options('/login', cors());  // Enable preflight request for /login route
 
 
-mongoose.connect('mongodb+srv://scstewart:3uWaQotmtP0KuYKs@bullettrainer.qgybk7j.mongodb.net/', { useNewUrlParser: true, useUnifiedTopology: true });
+mongoose.connect('mongodb+srv://scstewart:BkcWXgc88k5vuG6I@bulletcluster0.ykfrfjm.mongodb.net/', { useNewUrlParser: true, useUnifiedTopology: true });
 
 const UserSchema = new mongoose.Schema({
     username: String,
     password: String,
-    coins: Number
+    gems: Number
 });
 
 const User = mongoose.model('User', UserSchema);
@@ -54,7 +54,7 @@ appExpress.post('/register', async (req, res) => {
     const newUser = new User({
         username,
         password: hashedPassword,
-        coins: 0
+        gems: 0
     });
 
     try {
@@ -94,7 +94,7 @@ appExpress.get('/user-details', async (req, res) => {
     try {
         const decodedToken = jwt.verify(token, 'm981cc483ujsicjc3mm202817scciz9d0ww938');
 
-        const user = await User.findById(decodedToken.id, 'username coins');
+        const user = await User.findById(decodedToken.id, 'username gems');
 
         if (!user) {
             return res.status(404).send({ message: "User not found." });
@@ -102,7 +102,7 @@ appExpress.get('/user-details', async (req, res) => {
 
         res.status(200).send({
             username: user.username,
-            coinCount: user.coins
+            gemCount: user.gems
         });
     } catch (error) {
         console.error("Error fetching user details:", error);

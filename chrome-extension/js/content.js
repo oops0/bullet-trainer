@@ -53,31 +53,41 @@ const checkUserStatus = async () => {
 
                 const data = await response.json();
 
-                if (response.ok && data.username && data.coinCount !== undefined) {
-                    updateUIWithUserDetails(data.username, data.coinCount);
+                if (response.ok && data.username && data.gemCount !== undefined) {
+                    updateUIWithUserDetails(data.username, data.gemCount);
+                    adjustButtonVisibility(true);
                 } else {
                     console.error("Error fetching user details:", data.message);
+                    // Handle the case when the user is not authenticated
+                    chrome.storage.local.remove('token'); // Clear the token
+                    adjustButtonVisibility(false);
                 }
             } catch (error) {
                 console.error("Error while checking user status:", error);
+                // Handle the case when there's an error (e.g., server is down)
+                adjustButtonVisibility(false);
             }
+        } else {
+            adjustButtonVisibility(false);
         }
     });
 };
 
-const updateUIWithUserDetails = (username, coinCount) => {
+const updateUIWithUserDetails = (username, gemCount) => {
     userDetails.innerText = username;
+    userDetails.classList.remove('logged-out'); // This line ensures the correct styling
 
-    const coinCountSpan = document.createElement('span');
-    coinCountSpan.innerText = ` ${coinCount} coins`;
-    coinCountSpan.className = 'coin-count';
+    if (userDetails.parentNode === detailsSection) {
+        detailsSection.removeChild(userDetails);
+    }
 
-    // Remove the userDetails from its current position
-    detailsSection.removeChild(userDetails);
+    const gemCountSpan = document.createElement('span');
+    gemCountSpan.innerText = ` ${gemCount} gems`;
+    gemCountSpan.className = 'gem-count';
 
-    // Append the userDetails and coinCountSpan to the detailsSection
+    // Append the userDetails and gemCountSpan to the detailsSection
     detailsSection.appendChild(userDetails);
-    detailsSection.appendChild(coinCountSpan);
+    detailsSection.appendChild(gemCountSpan);
 
     // Create a new container for the userDetails and logoutButton
     const userLogoutContainer = document.createElement('div');
@@ -88,6 +98,7 @@ const updateUIWithUserDetails = (username, coinCount) => {
     // Append the new container to the buttonContainer
     buttonContainer.appendChild(userLogoutContainer);
 };
+
 
 
 const sendMoves = (moves) => {
@@ -282,10 +293,11 @@ const checkbox = document.createElement('input');
 checkbox.type = 'checkbox';
 
 const icon = document.createElement('img');
-icon.src = chrome.runtime.getURL('assets/analyze.png');
-icon.style.width = '30px';
-icon.style.height = '30px';
-icon.style.marginLeft = '10px';
+icon.src = chrome.runtime.getURL('assets/gem.png');
+icon.style.width = '25px';
+icon.style.height = '25px';
+icon.style.marginLeft = '5px';
+icon.style.marginRight = '5px';
 
 const userDetails = document.createElement('span');
 userDetails.innerText = 'Not logged in'; 
@@ -336,13 +348,23 @@ loginButtonTrigger.addEventListener('click', () => showPopup(loginSection));
 
 buttonContainer.appendChild(loginButtonTrigger);  // Add these buttons to the buttonContainer for alignment
 
+function clearUserDetails() {
+    userDetails.innerText = 'Not logged in';
+    const gemCountSpan = document.querySelector('.gem-count');
+    if (gemCountSpan) {
+        gemCountSpan.remove(); // Remove the gem count display
+    }
+}
+
 const logoutButton = document.createElement('button');
 logoutButton.className = "logout-button"; // Add this line
 logoutButton.innerText = "Logout";
 logoutButton.addEventListener('click', () => {
     chrome.storage.local.remove('token', function() {
-        alert('Logged out successfully!');
+        setExtensionStatus('Logout successful');
+        userDetails.classList.add('logged-out');
         adjustButtonVisibility(false);
+        clearUserDetails(); // Clear the displayed username
     });
 });
 
@@ -439,6 +461,9 @@ function setExtensionStatus(status) {
             break;
         case 'Observing':
             statusText.className = 'status-text observing';
+            break;
+        case 'Logout successful':
+            statusText.className = 'status-text logout-successful'; // Add a new class for this status
             break;
     }
 }

@@ -81,6 +81,11 @@
     line-height: 1;
 }
 
+.status-text.logout-successful {
+    color: green;
+}
+
+
 /* Details Section */
 .details-section {
     display: flex;
@@ -95,9 +100,14 @@
 }
 
 .user-details {
-    margin-left: 5px;
-    font-style: italic;
+    margin-left: 7px;
     font-size: 13px;
+    text-decoration: underline;
+}
+
+.user-details.logged-out {
+    font-style: italic;
+    text-decoration: none;
 }
 
 .logout-button {
