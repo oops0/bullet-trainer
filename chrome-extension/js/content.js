@@ -2,6 +2,7 @@ let ws;
 let lastSeenPGN = ""; 
 let connectionCheckInterval;
 let isObserving = false; // Global flag to check if the extension is actively observing
+let flipPending = false;  // To track if a flip is pending after the orientation button is clicked
 
 const checkWebSocketConnection = () => {
     if (!ws || ws.readyState !== WebSocket.OPEN) {
@@ -73,32 +74,6 @@ const checkUserStatus = async () => {
     });
 };
 
-const updateUIWithUserDetails = (username, gemCount) => {
-    userDetails.innerText = username;
-    userDetails.classList.remove('logged-out'); // This line ensures the correct styling
-
-    if (userDetails.parentNode === detailsSection) {
-        detailsSection.removeChild(userDetails);
-    }
-
-    const gemCountSpan = document.createElement('span');
-    gemCountSpan.innerText = ` ${gemCount} gems`;
-    gemCountSpan.className = 'gem-count';
-
-    // Append the userDetails and gemCountSpan to the detailsSection
-    detailsSection.appendChild(userDetails);
-    detailsSection.appendChild(gemCountSpan);
-
-    // Create a new container for the userDetails and logoutButton
-    const userLogoutContainer = document.createElement('div');
-    userLogoutContainer.className = 'user-logout-container';
-    userLogoutContainer.appendChild(userDetails);
-    userLogoutContainer.appendChild(logoutButton);
-
-    // Append the new container to the buttonContainer
-    buttonContainer.appendChild(userLogoutContainer);
-};
-
 const sendMoves = (moves) => {
     if (ws && ws.readyState === WebSocket.OPEN && moves !== lastSeenPGN) { 
         ws.send(JSON.stringify({ move: moves }));
@@ -148,6 +123,41 @@ const initiateTemporaryObserver = () => {
     tempObserver.observe(bodyElement, { childList: true, subtree: true });
 };
 
+function flipFunction() {
+    ws.send('FLIP');
+    flipPending = true;
+}
+
+function reloadFunction() {
+    ws.send('RELOAD');
+}
+
+function setExtensionStatus(status) {
+    const statusText = document.getElementById('extensionStatusText');
+    statusText.textContent = status;
+
+    switch (status) {
+        case 'Inactive':
+            statusText.className = 'status-text inactive';
+            break;
+        case 'Waiting for moves...':
+            statusText.className = 'status-text waiting';
+            break;
+        case 'Observing':
+            statusText.className = 'status-text observing';
+            break;
+        case 'Logout successful':
+            statusText.className = 'status-text logout-successful'; 
+            break;
+        case 'Login successful!':
+            statusText.className = 'status-text login-successful'; // Add a new class for this status
+            break;
+        case 'Login failed. Check your credentials.':
+            statusText.className = 'status-text login-failed'; // Add a new class for this status
+            break;
+    }
+}
+
 // Immediately establish WebSocket connection on extension load.
 establishWebSocket();
 
@@ -186,22 +196,19 @@ startButton.innerText = "Start";
 startButton.className = 'styled-button';
 startButton.addEventListener('click', initiateObserver);
 
-let flipPending = false;  // To track if a flip is pending after the orientation button is clicked
+const flipButton = document.createElement('button');
+flipButton.innerText = "Flip"; // default state
+flipButton.className = 'flip-button';
+flipButton.addEventListener('click', flipFunction);
 
-function flipFunction() {
-    // Perform the initial flip
-    ws.send('FLIP');  // Assuming 'ws' is your WebSocket connection
-
-    flipPending = true;  // Set the flipPending flag to true
-}
-
-const orientationButton = document.createElement('button');
-orientationButton.innerText = "Flip"; // default state
-orientationButton.className = 'flip-button';
-orientationButton.addEventListener('click', flipFunction);
+const reloadButton = document.createElement('button');
+reloadButton.innerText = "Reload";
+reloadButton.className = 'reload-button';
+reloadButton.addEventListener('click', reloadFunction);
 
 actionButtonContainer.appendChild(startButton);
-actionButtonContainer.appendChild(orientationButton);
+actionButtonContainer.appendChild(flipButton);
+actionButtonContainer.appendChild(reloadButton);
 
 buttonContainer.appendChild(actionButtonContainer);
 
@@ -450,32 +457,31 @@ loginButton.addEventListener('click', async () => {
     }
 });
 
-function setExtensionStatus(status) {
-    const statusText = document.getElementById('extensionStatusText');
-    statusText.textContent = status;
+const updateUIWithUserDetails = (username, gemCount) => {
+    userDetails.innerText = username;
+    userDetails.classList.remove('logged-out'); // This line ensures the correct styling
 
-    switch (status) {
-        case 'Inactive':
-            statusText.className = 'status-text inactive';
-            break;
-        case 'Waiting for moves...':
-            statusText.className = 'status-text waiting';
-            break;
-        case 'Observing':
-            statusText.className = 'status-text observing';
-            break;
-        case 'Logout successful':
-            statusText.className = 'status-text logout-successful'; 
-            break;
-        case 'Login successful!':
-            statusText.className = 'status-text login-successful'; // Add a new class for this status
-            break;
-        case 'Login failed. Check your credentials.':
-            statusText.className = 'status-text login-failed'; // Add a new class for this status
-            break;
+    if (userDetails.parentNode === detailsSection) {
+        detailsSection.removeChild(userDetails);
     }
-}
 
+    const gemCountSpan = document.createElement('span');
+    gemCountSpan.innerText = ` ${gemCount} gems`;
+    gemCountSpan.className = 'gem-count';
+
+    // Append the userDetails and gemCountSpan to the detailsSection
+    detailsSection.appendChild(userDetails);
+    detailsSection.appendChild(gemCountSpan);
+
+    // Create a new container for the userDetails and logoutButton
+    const userLogoutContainer = document.createElement('div');
+    userLogoutContainer.className = 'user-logout-container';
+    userLogoutContainer.appendChild(userDetails);
+    userLogoutContainer.appendChild(logoutButton);
+
+    // Append the new container to the buttonContainer
+    buttonContainer.appendChild(userLogoutContainer);
+};
 
 document.body.appendChild(parentContainer);
 // Check user's login status and update UI accordingly

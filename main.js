@@ -7,9 +7,10 @@ const mongoose = require('mongoose');
 const bodyParser = require('body-parser');
 const jwt = require('jsonwebtoken');
 const bcrypt = require('bcrypt');
-let mainWindow;
 const appExpress = express();
 const PORT = 3000;
+let reloadTriggeredBool = false;
+let mainWindow;
 
 const memoryOptionsMapping = {
     '16MB': 4,
@@ -21,7 +22,6 @@ const memoryOptionsMapping = {
     '1GB': 10
 };
 
-
 appExpress.use(bodyParser.json());
 appExpress.use(bodyParser.urlencoded({ extended: true }));
 // Enable CORS for the lichess.org origin
@@ -32,8 +32,7 @@ appExpress.use(cors({
     credentials: true
 }));
 
- appExpress.options('/login', cors());  // Enable preflight request for /login route
-
+appExpress.options('/login', cors());  // Enable preflight request for /login route
 
 mongoose.connect('mongodb+srv://scstewart:BkcWXgc88k5vuG6I@bulletcluster0.ykfrfjm.mongodb.net/', { useNewUrlParser: true, useUnifiedTopology: true });
 
@@ -109,8 +108,6 @@ appExpress.get('/user-details', async (req, res) => {
     }
 });
 
-
-
 function simulateKeyPress(key) {
     mainWindow.focus(); // Ensure the Electron window is focused.
     robot.keyTap(key); // Simulate the key press.
@@ -176,8 +173,8 @@ ipcMain.on('pgn-moves', (event, data) => {
 
 function createWindow() {
     mainWindow = new BrowserWindow({
-        width: 1000,
-        height: 800,
+        width: 800,
+        height: 640,
         webPreferences: {
             nodeIntegration: true
         }
@@ -212,7 +209,10 @@ function createWindow() {
                     console.error('Invalid memory value received:', memoryValue);
                 }
             }
-            
+            else if (decodedMessage === 'RELOAD') {
+                reloadTriggeredBool = true;
+                mainWindow.reload();
+            }
              else {
                 try {
                     const parsedMessage = JSON.parse(decodedMessage);
@@ -245,20 +245,12 @@ function createWindow() {
     
         try {
             await mainWindow.webContents.executeJavaScript(checkElementExistence);
-            simulateKeyPress('l');
+            if(reloadTriggeredBool){reloadTriggeredBool = false;}
+            else{simulateKeyPress('l');}
         } catch (error) {
             console.error('Error waiting for element:', error);
         }
     });
-    
-    mainWindow.on('closed', function () {
-        mainWindow = null;
-    });
-
-    appExpress.listen(PORT, () => {
-        console.log(`Express server started on port ${PORT}`);
-    });
-    
 }
 
 app.on('ready', createWindow);
